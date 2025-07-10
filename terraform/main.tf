@@ -1,3 +1,6 @@
+data "aws_caller_identity" "current" {}
+
+
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "5.21.0"
@@ -44,6 +47,23 @@ module "eks" {
     }
   }
 
+  access_entries = {
+    github_ci = {
+      principal_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/github-actions-deploy"
+
+      policy_associations = {
+        admin = {
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSAdminPolicy"
+          access_scope = {
+            type = "cluster"
+          }
+        }
+      }
+    }
+  }
+
+
+
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
 
@@ -76,10 +96,10 @@ resource "aws_ecr_lifecycle_policy" "expire_old_images" {
         rulePriority = 1
         description  = "Expire untagged images older than 14 days"
         selection = {
-          tagStatus     = "untagged"
-          countType     = "sinceImagePushed"
-          countUnit     = "days"
-          countNumber   = 14
+          tagStatus   = "untagged"
+          countType   = "sinceImagePushed"
+          countUnit   = "days"
+          countNumber = 14
         }
         action = {
           type = "expire"
@@ -88,3 +108,4 @@ resource "aws_ecr_lifecycle_policy" "expire_old_images" {
     ]
   })
 }
+
