@@ -51,6 +51,10 @@ jobs:
           kubectl apply -f k8s/service.yaml
           kubectl set image deployment/webapp webapp=$IMAGE_URI
 
+      - name: Wait for deployment rollout
+        run: |
+          kubectl rollout status deployment/webapp --timeout=120s
+
       - name: Get public URL of the app
         id: get-lb
         run: |
@@ -74,7 +78,7 @@ jobs:
         run: |
           echo "Performing health check on /healthz..."
           for i in {1..30}; do
-            STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://${{ env.LOAD_BALANCER }}/healthz)
+            STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://$LOAD_BALANCER/healthz)
             echo "HTTP Status: $STATUS_CODE"
 
             if [[ "$STATUS_CODE" -eq 200 ]]; then
