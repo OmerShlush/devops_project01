@@ -38,13 +38,19 @@ module "eks" {
     }
   }
 
+  create_kms_key = false
+  cluster_encryption_config = []
+
   access_entries = {
     github_ci = {
-      principal_arn = aws_iam_role.github_actions_oidc.arn
+      principal_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/github-actions-deploy"
+
       policy_associations = {
         admin = {
-          policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
-          access_scope = { type = "cluster" }
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSAdminPolicy"
+          access_scope = {
+            type = "cluster"
+          }
         }
       }
     }
@@ -65,7 +71,7 @@ resource "aws_ecr_repository" "hw_webapp" {
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
-    scan_on_push = true
+    scan_on_push = false
   }
 
   tags = {

@@ -21,9 +21,9 @@ echo "Updating secrets for repo: $REPO"
 AWS_REGION=$(terraform output -raw aws_region)
 CLUSTER_NAME=$(terraform output -raw cluster_name)
 ECR_REPOSITORY=$(terraform output -raw ecr_repository_name)
-OIDC_ROLE_ARN=$(terraform output -raw github_oidc_role_arn)
-
-for var in AWS_REGION CLUSTER_NAME ECR_REPOSITORY OIDC_ROLE_ARN; do
+AWS_ACCESS_KEY_ID=$(terraform output -raw github_actions_access_key_id)
+AWS_SECRET_ACCESS_KEY=$(terraform output -raw github_actions_secret_access_key)
+for var in AWS_REGION CLUSTER_NAME ECR_REPOSITORY AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY; do
   value=$(eval "echo \$$var")
   echo "Setting $var..."
   echo -n "$value" | gh secret set "$var" -R "$REPO"
