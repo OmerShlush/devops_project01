@@ -52,15 +52,39 @@ jobs:
           kubectl set image deployment/webapp webapp=$IMAGE_URI
 
       - name: Get public URL of the app
+        id: get-lb
         run: |
           echo "Waiting for LoadBalancer to get external IP..."
           for i in {1..30}; do
             LB=$(kubectl get svc webapp-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+            if [[ -z "$LB" ]]; then
+              LB=$(kubectl get svc webapp-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+            fi
             if [[ -n "$LB" ]]; then
-              echo "App is available at: http://$LB"
+              echo "LoadBalancer address: $LB"
+              echo "LOAD_BALANCER=$LB" >> $GITHUB_ENV
               exit 0
             fi
             sleep 10
           done
           echo "LoadBalancer external IP not found after timeout"
+          exit 1
+
+      - name: Health check on /healthz
+        run: |
+          echo "Performing health check on /healthz..."
+          for i in {1..30}; do
+            STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://${{ env.LOAD_BALANCER }}/healthz)
+            echo "HTTP Status: $STATUS_CODE"
+
+            if [[ "$STATUS_CODE" -eq 200 ]]; then
+              echo "Health check passed"
+              exit 0
+            fi
+
+            echo "Retrying health check ($i)..."
+            sleep 10
+          done
+
+          echo "Health check failed after multiple attempts"
           exit 1
