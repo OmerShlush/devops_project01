@@ -12,9 +12,6 @@ module "vpc" {
   private_subnets = ["10.0.1.0/24", "10.0.2.0/24"]
   public_subnets  = ["10.0.101.0/24", "10.0.102.0/24"]
 
-  enable_nat_gateway = true
-  enable_vpn_gateway = true
-
   tags = {
     Terraform   = "true"
     Environment = "dev"
@@ -25,23 +22,17 @@ module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 20.31"
 
-  cluster_name    = var.cluster_name
-  cluster_version = "1.31"
-
-  cluster_endpoint_public_access = true
-
+  cluster_name                         = var.cluster_name
+  cluster_version                      = "1.31"
+  cluster_endpoint_public_access       = true
   enable_cluster_creator_admin_permissions = true
-
-  create_kms_key            = false
-  cluster_encryption_config = []
 
   eks_managed_node_groups = {
     default = {
       min_size     = 1
       max_size     = 1
       desired_size = 1
-
-      instance_types = ["t3.small"]
+      instance_types = ["t3.micro"]
       capacity_type  = "ON_DEMAND"
       subnets        = module.vpc.private_subnets
     }
@@ -49,20 +40,15 @@ module "eks" {
 
   access_entries = {
     github_ci = {
-      principal_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/github-actions-deploy"
-
+      principal_arn = aws_iam_role.github_actions_oidc.arn
       policy_associations = {
         admin = {
-          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSAdminPolicy"
-          access_scope = {
-            type = "cluster"
-          }
+          policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+          access_scope = { type = "cluster" }
         }
       }
     }
   }
-
-
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
@@ -72,6 +58,7 @@ module "eks" {
     Terraform   = "true"
   }
 }
+
 
 resource "aws_ecr_repository" "hw_webapp" {
   name                 = "hw_webapp"
@@ -87,25 +74,4 @@ resource "aws_ecr_repository" "hw_webapp" {
   }
 }
 
-resource "aws_ecr_lifecycle_policy" "expire_old_images" {
-  repository = aws_ecr_repository.hw_webapp.name
-
-  policy = jsonencode({
-    rules = [
-      {
-        rulePriority = 1
-        description  = "Expire untagged images older than 14 days"
-        selection = {
-          tagStatus   = "untagged"
-          countType   = "sinceImagePushed"
-          countUnit   = "days"
-          countNumber = 14
-        }
-        action = {
-          type = "expire"
-        }
-      }
-    ]
-  })
-}
 
