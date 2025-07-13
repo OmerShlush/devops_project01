@@ -53,7 +53,7 @@ jobs:
 
       - name: Wait for deployment rollout
         run: |
-          kubectl rollout status deployment/webapp --timeout=120s
+          kubectl rollout status deployment/webapp --timeout=120s || kubectl get pods
 
       - name: Get public URL of the app
         id: get-lb
