@@ -1,4 +1,4 @@
-# DevOps Engineer Home Assignment
+# DevOps Project
 
 ## Stack
 - AWS EKS (via Terraform)
